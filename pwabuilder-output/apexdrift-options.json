@@ -1,0 +1,2 @@
+﻿https://codefyx.github.io/ApexDrift/manifest.webmanifest
+{"packageId":"com.codefyx.apexdrift","name":"Apex Drift","launcherName":"ApexDrift","host":"codefyx.github.io","startUrl":"/ApexDrift/?source=pwa","display":"fullscreen","orientation":"landscape","themeColor":"#05060e","backgroundColor":"#05060e","iconUrl":"https://codefyx.github.io/ApexDrift/icons/icon-512.png","maskableIconUrl":"https://codefyx.github.io/ApexDrift/icons/icon-maskable-512.png","appVersion":"1.1.0","enableNotifications":false,"isChromeOSOnly":false}

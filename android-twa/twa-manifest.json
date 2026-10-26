@@ -1,0 +1,19 @@
+{
+  "host": "codefyx.github.io",
+  "name": "Apex Drift",
+  "launcherName": "ApexDrift",
+  "displayMode": "fullscreen",
+  "themeColor": "#05060e",
+  "navigationColor": "#05060e",
+  "backgroundColor": "#05060e",
+  "startUrl": "/ApexDrift/?source=pwa",
+  "iconUrl": "https://raw.githubusercontent.com/codefyx/ApexDrift/main/icons/icon-512.png",
+  "maskableIconUrl": "https://raw.githubusercontent.com/codefyx/ApexDrift/main/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "appVersionName": "1.1.0",
+  "appVersionCode": 2,
+  "webManifestUrl": "https://raw.githubusercontent.com/codefyx/ApexDrift/main/manifest.webmanifest",
+  "fullScopeUrl": "https://codefyx.github.io/ApexDrift/",
+  "minSdkVersion": 21,
+  "orientation": "landscape"
+}
