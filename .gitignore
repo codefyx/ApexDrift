@@ -1,0 +1,11 @@
+# Dependencies (the game ships with vendored browser assets in assets/vendor)
+node_modules/
+
+# Local test and editor artifacts
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,56 @@
+{
+  "id": "./",
+  "name": "Apex Drift — Neon Circuit Racing",
+  "short_name": "Apex Drift",
+  "description": "A neon-soaked 3D arcade racer. Tune your car, hunt diamonds, and conquer four night circuits.",
+  "start_url": "./index.html?source=pwa",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "landscape",
+  "background_color": "#05060e",
+  "theme_color": "#05060e",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Circuit map",
+      "short_name": "Circuits",
+      "url": "./index.html?screen=tracks",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Garage",
+      "short_name": "Garage",
+      "url": "./index.html?screen=garage",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

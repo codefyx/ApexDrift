@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Apex Drift">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.75" y2="1">
+      <stop offset="0" stop-color="#141a33"/>
+      <stop offset="0.55" stop-color="#0a0d1b"/>
+      <stop offset="1" stop-color="#05060e"/>
+    </linearGradient>
+    <linearGradient id="blade" x1="88" y1="58" x2="424" y2="454" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2ff5ff"/>
+      <stop offset="0.48" stop-color="#8f8dff"/>
+      <stop offset="0.78" stop-color="#b76bff"/>
+      <stop offset="1" stop-color="#ff2e88"/>
+    </linearGradient>
+    <linearGradient id="streak" x1="140" y1="420" x2="392" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2ff5ff" stop-opacity="0"/>
+      <stop offset="0.4" stop-color="#2ff5ff" stop-opacity="0.85"/>
+      <stop offset="0.7" stop-color="#ff2e88" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#ff2e88" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.46" r="0.55">
+      <stop offset="0" stop-color="#2ff5ff" stop-opacity="0.3"/>
+      <stop offset="0.55" stop-color="#b76bff" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#b76bff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect x="0.5" y="0.5" width="511" height="511" rx="111.5" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+
+  <circle cx="256" cy="238" r="196" fill="url(#glow)"/>
+
+  <g opacity="0.28" stroke="#8f8dff" stroke-width="2" stroke-linecap="round">
+    <path d="M74 118h58M60 150h44M398 380h54M414 412h32"/>
+  </g>
+
+  <g filter="url(#soft)" opacity="0.68">
+    <path d="M256 91 433 411h-72L256 220 151 411H79L256 91Z" fill="url(#blade)"/>
+  </g>
+
+  <path d="M256 91 433 411h-72L256 220 151 411H79L256 91Z" fill="url(#blade)"/>
+  <path d="M256 277 331 411H181l75-134Z" fill="#f6f9ff" opacity="0.95"/>
+  <path d="M256 337 277 411h-42l21-74Z" fill="#0a0d1b" opacity="0.55"/>
+
+  <rect x="140" y="438" width="232" height="5" rx="2.5" fill="url(#streak)"/>
+  <rect x="186" y="452" width="140" height="4" rx="2" fill="url(#streak)" opacity="0.55"/>
+</svg>
