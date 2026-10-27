@@ -117,10 +117,10 @@ export class Input {
     const k = this.keys;
     const a = this.actions;
     let steer = 0;
-    if (k.has('left') || a.has('steer-left')) steer -= 1;
-    if (k.has('right') || a.has('steer-right')) steer += 1;
+    if (k.has('left') || a.has('steer-left')) steer += 1;
+    if (k.has('right') || a.has('steer-right')) steer -= 1;
     if (this.tiltEnabled && Math.abs(this.tilt) > 0.08) {
-      steer = Math.max(-1, Math.min(1, this.tilt * 1.35));
+      steer = Math.max(-1, Math.min(1, - (this.tilt * 1.35)));
     }
     let throttle = (k.has('throttle') || a.has('throttle')) ? 1 : 0;
     if (this.autoThrottle) throttle = 1;
