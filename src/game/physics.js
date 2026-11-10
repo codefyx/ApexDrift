@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { projectToTrack } from '../data/tracks.js';
+import { BALANCE } from './balance.js';
 
 export const CAR_RADIUS = 1.55;
 export const CAR_LENGTH = 4.5;
@@ -54,6 +55,7 @@ export function stepCar(car, raceTime, dt, track, events = {}) {
   car.justFinished = false;
   car.justLapped = null;
   car.hitWall = false;
+  car.assistCushion = false;
   car.wallCooldown = Math.max(0, car.wallCooldown - dt);
   car.resetCooldown = Math.max(0, car.resetCooldown - dt);
 
@@ -75,8 +77,35 @@ export function stepCar(car, raceTime, dt, track, events = {}) {
   const inp = car.input;
   const stats = car.stats;
 
+  // --- Player crash-avoidance assist. If the car is predicted to run wide or
+  // into a wall, quietly blend a steering correction toward the racing line and
+  // add grip so the slide stops before it reaches the wall.
+  car.assistSteer = 0;
+  car.assistGrip = 1;
+  if (car.isPlayer && car.speed > BALANCE.assistMinSpeed) {
+    const projS = proj.sample;
+    const latVel = car.vx * projS.right.x + car.vz * projS.right.z;
+    const speedNow = Math.hypot(car.vx, car.vz);
+    const look = BALANCE.assistLookahead + speedNow * BALANCE.assistLookaheadSpeed;
+    const predicted = proj.lateral + latVel * look;
+    const startAt = track.halfWidth * BALANCE.assistStart;
+    if (Math.abs(predicted) > startAt) {
+      const ahead = 6 + speedNow * 0.25;
+      const targetIdx = (proj.index + Math.max(2, Math.round(ahead / track.spacing))) % track.sampleCount;
+      const target = track.samples[targetIdx].p;
+      const desiredYaw = Math.atan2(target.x - car.x, target.z - car.z);
+      const diff = wrapAngle(desiredYaw - car.yaw);
+      const strength = THREE.MathUtils.clamp(
+        (Math.abs(predicted) - startAt) / Math.max(0.5, track.wallLimit - startAt), 0, 1
+      ) * BALANCE.assistMax;
+      car.assistSteer =
+        THREE.MathUtils.clamp(diff * BALANCE.assistSteerGain, -1, 1) * strength;
+      car.assistGrip = 1 + BALANCE.assistGrip * strength;
+    }
+  }
+
   // --- Steering input smoothing
-  const steerTarget = THREE.MathUtils.clamp(inp.steer, -1, 1);
+  const steerTarget = THREE.MathUtils.clamp(inp.steer + car.assistSteer, -1, 1);
   const steerSpeed = 8.5 + stats.stability * 5;
   car.steer += (steerTarget - car.steer) * Math.min(1, dt * steerSpeed);
 
@@ -100,7 +129,8 @@ export function stepCar(car, raceTime, dt, track, events = {}) {
   let vLat = car.vx * rx + car.vz * rz;
 
   const offroad = !car.onTrack;
-  let topLimit = stats.topSpeed * (car.speedBonus || 1) * (offroad ? 0.58 : 1);
+  const offroadSpeed = car.isPlayer ? BALANCE.offroadSpeedPlayer : 0.58;
+  let topLimit = stats.topSpeed * (car.speedBonus || 1) * (offroad ? offroadSpeed : 1);
 
   // Nitro
   car.boosting = false;
@@ -111,14 +141,14 @@ export function stepCar(car, raceTime, dt, track, events = {}) {
     topLimit *= 1.13;
     vLong += stats.nitroThrust * dt;
   } else {
-    car.nitro = Math.min(1, car.nitro + stats.nitroRegen * dt * (car.drifting ? 2.1 : 1));
+    car.nitro = Math.min(1, car.nitro + stats.nitroRegen * (car.nitroRegenBonus || 1) * dt * (car.drifting ? 2.1 : 1));
   }
 
   // --- Longitudinal forces
   let force = 0;
   const limitRatio = THREE.MathUtils.clamp(vLong / Math.max(1, topLimit), 0, 1);
   if (inp.throttle > 0 && !car.finished) {
-    force += inp.throttle * stats.accel * (1 - Math.pow(limitRatio, 2.0));
+    force += inp.throttle * stats.accel * (car.accelBonus || 1) * (1 - Math.pow(limitRatio, 2.0));
   }
   if (inp.brake > 0) {
     if (vLong > 0.8) force -= inp.brake * 30;
@@ -135,10 +165,10 @@ export function stepCar(car, raceTime, dt, track, events = {}) {
   if (vLong < -13) vLong = -13;
 
   // --- Lateral grip. Lower grip = longer slides.
-  let grip = stats.grip;
+  let grip = stats.grip * (car.gripBonus || 1) * (car.assistGrip || 1);
   if (inp.handbrake) grip *= 0.19;
   else if (inp.brake > 0.4 && Math.abs(vLong) > 18) grip *= 0.72;
-  if (offroad) grip *= 0.52;
+  if (offroad) grip *= car.isPlayer ? BALANCE.offroadGripPlayer : 0.52;
   if (Math.abs(vLong) < 2) grip *= 0.4;
   vLat *= Math.exp(-grip * dt);
   // hard safety cap on sideways speed
@@ -169,6 +199,26 @@ export function stepCar(car, raceTime, dt, track, events = {}) {
   const targetY = proj2.height;
   car.y += (targetY - car.y) * Math.min(1, dt * 14);
 
+  // --- Player soft barrier. A cushion just inside the wall nudges the car back
+  // onto the track instead of letting the player crash out of the race.
+  if (car.isPlayer && !car.finished) {
+    const cushion = track.wallLimit - BALANCE.assistCushion;
+    if (Math.abs(car.lateral) > cushion) {
+      const side = Math.sign(car.lateral);
+      const over = Math.abs(car.lateral) - cushion;
+      car.x -= s.right.x * side * over;
+      car.z -= s.right.z * side * over;
+      const vn = car.vx * s.right.x * side + car.vz * s.right.z * side;
+      if (vn > 0) {
+        car.vx -= s.right.x * side * vn;
+        car.vz -= s.right.z * side * vn;
+      }
+      car.yawRate *= BALANCE.assistCushionYaw;
+      car.lateral = side * cushion;
+      car.assistCushion = true;
+    }
+  }
+
   // --- Wall collisions
   const limit = track.wallLimit;
   if (Math.abs(car.lateral) > limit) {
@@ -178,15 +228,18 @@ export function stepCar(car, raceTime, dt, track, events = {}) {
     car.x = s.p.x + s.right.x * side * limit;
     car.z = s.p.z + s.right.z * side * limit;
     const vn = car.vx * nx + car.vz * nz;
+    const restitution = car.isPlayer ? BALANCE.wallRestitutionPlayer : 1.28;
+    const damping = car.isPlayer ? BALANCE.wallDampingPlayer : 0.9;
+    const yawDamping = car.isPlayer ? BALANCE.wallYawDampingPlayer : 0.45;
     if (vn > 0) {
-      car.vx -= nx * vn * 1.28;
-      car.vz -= nz * vn * 1.28;
+      car.vx -= nx * vn * restitution;
+      car.vz -= nz * vn * restitution;
       car.hitWall = true;
       car.wallNormal = { x: nx, z: nz };
     }
-    car.vx *= 0.9;
-    car.vz *= 0.9;
-    car.yawRate *= 0.45;
+    car.vx *= damping;
+    car.vz *= damping;
+    car.yawRate *= yawDamping;
     if (car.wallCooldown <= 0 && Math.abs(car.speed) > 4) {
       car.wallHits++;
       car.wallCooldown = 0.45;
@@ -285,15 +338,18 @@ export function resolveCarCollisions(cars, onImpact) {
       const nx = dx / d;
       const nz = dz / d;
       const overlap = minD - d;
+      const withPlayer = a.isPlayer || b.isPlayer;
+      const separation = withPlayer ? BALANCE.carSeparationPlayer : 0.9;
+      const impulseFactor = withPlayer ? BALANCE.carImpulsePlayer : 0.65;
       const massA = a.finished ? 2.2 : 1;
       const massB = b.finished ? 2.2 : 1;
-      a.x -= nx * overlap * (massB / (massA + massB)) * 0.9;
-      a.z -= nz * overlap * (massB / (massA + massB)) * 0.9;
-      b.x += nx * overlap * (massA / (massA + massB)) * 0.9;
-      b.z += nz * overlap * (massA / (massA + massB)) * 0.9;
+      a.x -= nx * overlap * (massB / (massA + massB)) * separation;
+      a.z -= nz * overlap * (massB / (massA + massB)) * separation;
+      b.x += nx * overlap * (massA / (massA + massB)) * separation;
+      b.z += nz * overlap * (massA / (massA + massB)) * separation;
       const relV = (b.vx - a.vx) * nx + (b.vz - a.vz) * nz;
       if (relV < 0) {
-        const imp = relV * 0.65;
+        const imp = relV * impulseFactor;
         a.vx += nx * imp;
         a.vz += nz * imp;
         b.vx -= nx * imp;

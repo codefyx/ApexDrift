@@ -267,7 +267,7 @@ function cacheElements() {
 
 function showBootFailure() {
   const meta = $('.boot-meta');
-  if (meta) meta.innerHTML = '<span class="bad">WEBGL UNAVAILABLE</span><span>TRY CHROME OR EDGE</span><span>v1.1.0</span>';
+  if (meta) meta.innerHTML = '<span class="bad">WEBGL UNAVAILABLE</span><span>TRY CHROME OR EDGE</span><span>v1.1.3</span>';
   if (els.bootStart) {
     els.bootStart.disabled = true;
     els.bootStart.textContent = 'WEBGL REQUIRED';

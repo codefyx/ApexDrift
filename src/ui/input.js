@@ -116,11 +116,16 @@ export class Input {
   read() {
     const k = this.keys;
     const a = this.actions;
-    let steer = 0;
-    if (k.has('left') || a.has('steer-left')) steer -= 1;
-    if (k.has('right') || a.has('steer-right')) steer += 1;
+    // Physics treats a positive steer value as a yaw increase, which rotates the car
+    // toward world +X. The chase camera looks down +Z, so +X is screen *left*.
+    // Collect the player's intent first (+1 = right on screen) and negate it below
+    // so keyboard, touch and tilt all agree with what the player sees.
+    let intent = 0;
+    if (k.has('left') || a.has('steer-left')) intent -= 1;
+    if (k.has('right') || a.has('steer-right')) intent += 1;
+    let steer = -intent;
     if (this.tiltEnabled && Math.abs(this.tilt) > 0.08) {
-      steer = Math.max(-1, Math.min(1, this.tilt * 1.35));
+      steer = Math.max(-1, Math.min(1, -this.tilt * 1.35));
     }
     let throttle = (k.has('throttle') || a.has('throttle')) ? 1 : 0;
     if (this.autoThrottle) throttle = 1;

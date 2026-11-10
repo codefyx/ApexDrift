@@ -6,6 +6,7 @@ import { AI_NAMES, PAINTS, DIFFICULTIES } from '../data/gameData.js';
 import { textTexture } from '../render/textures.js';
 import { RaceCamera } from './camera.js';
 import { AIDriver } from './ai.js';
+import { BALANCE } from './balance.js';
 import {
   makeCar, placeCarOnGrid, stepCar, resetToTrack, resolveCarCollisions
 } from './physics.js';
@@ -74,6 +75,10 @@ export class Race {
     this.standings = [];
     this.crashCooldown = 0;
     this.lastImpact = 0;
+    this.playerStuckT = 0;
+    this.assistLevel = 0;
+    this.draftLevel = 0;
+    this.assistAnnounced = false;
     this.sessionBest = null;
     this.weather = null;
 
@@ -95,9 +100,13 @@ export class Race {
     const playerStats = {
       ...baseStats,
       accel: baseStats.accel * diff.playerAccel,
-      grip: baseStats.grip * diff.playerGrip,
+      grip: baseStats.grip * diff.playerGrip * BALANCE.playerGripAssist,
       steerRate: baseStats.steerRate * diff.playerSteer,
-      stability: Math.max(0.55, baseStats.stability + diff.playerStability)
+      // The player always has the best stability, on every difficulty.
+      stability: Math.max(
+        BALANCE.playerStabilityFloor,
+        baseStats.stability + diff.playerStability + BALANCE.playerStabilityBonus
+      )
     };
     const def = this.def;
     const playerColor = new THREE.Color(this.store.getPaintHex());
@@ -309,6 +318,7 @@ export class Race {
     if (this.state === 'racing') {
       this.raceTime += dt;
       this.updatePlayerInput();
+      this.applyPlayerEdge();
       for (const car of this.cars) {
         if (car.ai && !car.finished) {
           car.ai.update(dt, this.raceTime, this.cars, this.player);
@@ -319,6 +329,7 @@ export class Race {
         }
       }
       this.stepPhysics(dt);
+      this.updatePlayerRecovery(dt);
       this.handleLapEvents();
       if (this.player.justFinished || this.player.finished) {
         if (!this.finishHandled) this.handlePlayerFinish();
@@ -408,6 +419,72 @@ export class Race {
     p.input.steer = i.steer;
     p.input.handbrake = i.handbrake;
     p.input.boost = i.boost && !p.finished;
+  }
+
+  /**
+   * Player-favouring catch-up and slipstream. The further the player is behind
+   * the leader, the more top speed, acceleration, grip and nitro regen they get.
+   * Sitting in a rival's wake adds a tow so overtakes are always on the table.
+   */
+  applyPlayerEdge() {
+    const p = this.player;
+    if (this.mode === 'practice' || p.finished) {
+      p.speedBonus = 1;
+      p.accelBonus = 1;
+      p.gripBonus = 1;
+      p.nitroRegenBonus = 1;
+      this.assistLevel = 0;
+      this.draftLevel = 0;
+      return;
+    }
+    let leaderProgress = p.raceProgress;
+    let draft = 0;
+    for (const car of this.cars) {
+      if (car === p || car.finished) continue;
+      if (car.raceProgress > leaderProgress) leaderProgress = car.raceProgress;
+      const ahead = (car.raceProgress - p.raceProgress) * this.track.length;
+      if (ahead > 0 && ahead < BALANCE.draftRange &&
+        Math.abs(car.lateral - p.lateral) < BALANCE.draftWidth) {
+        draft = Math.max(draft, 1 - ahead / BALANCE.draftRange);
+      }
+    }
+    const gap = Math.max(0, (leaderProgress - p.raceProgress) * this.track.length);
+    const t = THREE.MathUtils.clamp(
+      (gap - BALANCE.catchUpStart) / (BALANCE.catchUpFull - BALANCE.catchUpStart),
+      0, 1
+    );
+    this.assistLevel = t;
+    this.draftLevel = draft;
+    p.speedBonus = 1 + BALANCE.catchUpTopSpeed * t + BALANCE.draftTopSpeed * draft;
+    p.accelBonus = 1 + BALANCE.catchUpAccel * t + BALANCE.draftAccel * draft;
+    p.gripBonus = 1 + BALANCE.catchUpGrip * t;
+    p.nitroRegenBonus = 1 + BALANCE.catchUpNitro * t;
+
+    if (t > 0.55 && !this.assistAnnounced) {
+      this.assistAnnounced = true;
+      this.hud.setMessage('CATCH-UP ASSIST', 'HUNT THEM DOWN', 1.1, 'go');
+    }
+  }
+
+  /**
+   * A crash should cost seconds, not the race. If the player is nearly stopped
+   * but still on the throttle, put the car back on the racing line.
+   */
+  updatePlayerRecovery(dt) {
+    const p = this.player;
+    if (p.finished) {
+      this.playerStuckT = 0;
+      return;
+    }
+    const speed = Math.hypot(p.vx, p.vz);
+    const trying = p.input.throttle > 0.2 || p.input.brake > 0.2;
+    if (speed < 3.5 && trying && this.raceTime > 3) this.playerStuckT += dt;
+    else this.playerStuckT = Math.max(0, this.playerStuckT - dt * 2.5);
+    if (this.playerStuckT < BALANCE.autoRecoverTime) return;
+    this.playerStuckT = 0;
+    resetToTrack(p, this.track);
+    this.raceCamera.initialized = false;
+    this.hud.setMessage('RECOVERED', 'BACK ON THE LINE', 1.0, 'go');
   }
 
   stepPhysics(dt) {
@@ -517,6 +594,7 @@ export class Race {
     this.standings = sorted;
     const idx = sorted.indexOf(this.player);
     this.playerPosition = idx >= 0 ? idx + 1 : 8;
+    this.player.isLeader = this.playerPosition === 1;
   }
 
   updateCarVisuals(dt, time) {

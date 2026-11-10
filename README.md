@@ -75,6 +75,33 @@ cycle. Difficulty changes both the AI pack and your car's handling.
 - `NORMAL` is the balanced setup.
 - `HARD` makes the pack faster and your car less forgiving. Upgrades matter.
 
+### Assists and fairness
+
+The player always has the most stable car on the grid, and the race is tuned so
+that a mistake costs a few seconds, not the whole race:
+
+- **Best control, always** — the player's car gets a permanent grip bonus and a
+  stability floor above every rival's, on every difficulty.
+- **Crash avoidance** — when the car is predicted to run wide, steering help
+  pulls it back toward the racing line and extra grip stops the slide. A soft
+  barrier a little inside the wall nudges the player back onto the track instead
+  of letting them crash.
+- **Catch-up assist** — when you are more than ~35 m behind the leader, your car
+  gains up to +18% top speed, +30% acceleration, +16% grip and faster nitro
+  regen. The help scales with the gap and caps out at ~380 m.
+- **Slipstream** — sitting within 34 m behind a rival, lined up with it, gives a
+  tow of up to +10% top speed and +20% acceleration, so passes are always on.
+- **Rivals make room** — a rival just ahead lifts 6% when the player is right
+  behind it, and rivals far ahead ease off up to 24%.
+- **Rivals only fight back when you lead** — the AI's speed and acceleration
+  boost only activates while the player is P1, giving them a chance to chase
+  without ever making the climb to the front unfair.
+- **Auto-recovery** — if a crash leaves you nearly stopped while holding the
+  throttle for ~2.6 s, the car is placed back on the racing line automatically.
+  You can always reset manually with `R`.
+
+All of these knobs live in [`src/game/balance.js`](src/game/balance.js).
+
 ### Practice
 
 Open **Circuits**, select any circuit and press **PRACTICE**. A practice session
@@ -125,6 +152,42 @@ use), open the HTTPS URL on the phone and use **Install app** from the Chrome me
 > Windows Firewall may ask for permission the first time. Allow Node.js on
 > **private networks** if you want to play over Wi-Fi.
 
+### Android app package (TWA)
+
+The Play Store build is a Trusted Web Activity that loads the hosted game, so a
+web release is automatically picked up by the Android app — only the version
+metadata has to move.
+
+- `android-twa/twa-manifest.json` — Bubblewrap/PWABuilder input (package
+  `com.codefyx.apexdrift`, fullscreen, landscape, start URL
+  `/ApexDrift/?source=pwa`). Currently `appVersionName` **1.1.3**,
+  `appVersionCode` **3**.
+- `pwabuilder-output/apexdrift-options.json` — the same settings exported from
+  PWABuilder, kept in sync with the manifest.
+- `playstore/` and `playstore-pwa/` — staging folders for generated bundles.
+
+Rebuild the AAB after changing the manifest:
+
+```powershell
+npm i -g @bubblewrap/cli
+bubblewrap init --manifest https://codefyx.github.io/ApexDrift/manifest.webmanifest
+bubblewrap build
+```
+
+`bubblewrap build` writes `app-release-bundle.aab` and signs it with the key you
+created during `init`. Remember to raise `appVersionCode` for every Play upload.
+
+### Release checklist
+
+1. Bump `VERSION` in `sw.js` (cache key) and the displayed version in
+   `index.html` / `package.json`.
+2. Raise `appVersionName` and `appVersionCode` in
+   `android-twa/twa-manifest.json` and `appVersion` in
+   `pwabuilder-output/apexdrift-options.json`.
+3. `npm run check` — validates every circuit spline.
+4. Commit to `main`; the GitHub Pages workflow deploys the new build, and the
+   installed PWA updates on the next launch after its service worker refreshes.
+
 ---
 
 ## Progression
@@ -167,10 +230,14 @@ ApexDrift/
     state.js               save data, economy, progression
     audio.js               synthesised music and SFX
     data/                  tracks, upgrades, paints, achievements
-    game/                  physics, AI, camera, race loop
+    game/                  physics, AI, balance, camera, race loop
     render/                procedural car, world, scenery, showroom
     ui/                    HUD and input
   tools/check-tracks.mjs   circuit geometry validator
+  android-twa/             TWA manifest + Play Store build notes
+  pwabuilder-output/       PWABuilder export kept in sync with the TWA manifest
+  playstore/               generated Play Store bundles/staging
+  .github/workflows/       GitHub Pages deployment
 ```
 
 ### Useful commands

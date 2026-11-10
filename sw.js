@@ -1,5 +1,5 @@
 /* Apex Drift service worker — offline-first shell for desktop + Android PWA. */
-const VERSION = 'apexdrift-v1.1.0';
+const VERSION = 'apexdrift-v1.1.3';
 const CORE = `${VERSION}-core`;
 
 const PRECACHE = [
@@ -35,6 +35,7 @@ const PRECACHE = [
   './src/data/gameData.js',
   './src/data/tracks.js',
   './src/game/ai.js',
+  './src/game/balance.js',
   './src/game/camera.js',
   './src/game/physics.js',
   './src/game/race.js',

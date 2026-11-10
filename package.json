@@ -1,6 +1,6 @@
 {
   "name": "apex-drift",
-  "version": "1.1.0",
+  "version": "1.1.3",
   "private": true,
   "type": "module",
   "description": "Apex Drift - a vivid arcade racing game for laptop and Android, built with Three.js",

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { wrapAngle } from './physics.js';
+import { BALANCE } from './balance.js';
 
 /**
  * Lightweight racing-line AI. It uses curvature look-ahead to brake for
@@ -33,11 +34,21 @@ export class AIDriver {
     const progress = car.progress ?? 0;
 
     // Rubber banding relative to the player (meters of track).
+    // - Rivals only get a speed/acceleration edge once the player is the leader.
+    // - While the player is chasing, rivals ahead ease off and lift slightly when
+    //   the player is right behind, so passes stick.
     let band = 0;
-    if (player) {
-      const delta = (player.raceProgress - car.raceProgress) * track.length;
-      band = THREE.MathUtils.clamp(delta / 900, -0.075, 0.085);
-      if (car.finished) band = 0;
+    car.accelBonus = 1;
+    if (player && !car.finished && !player.finished) {
+      const gap = (player.raceProgress - car.raceProgress) * track.length;
+      const t = THREE.MathUtils.clamp(gap / BALANCE.aiBandRange, -1, 1);
+      if (player.isLeader && gap > 0) {
+        band = t * BALANCE.aiCatchUp;
+        car.accelBonus = 1 + BALANCE.aiCatchUpAccel * (0.4 + 0.6 * t);
+      } else if (gap < 0) {
+        band = t * BALANCE.aiSlowDown;
+        if (gap > -BALANCE.aiYieldRange) band -= BALANCE.aiYield;
+      }
     }
     car.speedBonus = 1 + band;
 
